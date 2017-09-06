@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 
-@task(returns=object)
+@task(returns=torch.DoubleTensor)
 def sum_centroids(a, b):
     return a+b
 
@@ -22,7 +22,7 @@ def mergeReduce(function, data):
             return data[x]
 
 
-@task(returns=object)
+@task(returns=torch.DoubleTensor)
 def assign(vectors, assignments, k, dim):
     centroids = []
     for c in range(k):
@@ -38,7 +38,7 @@ def assign(vectors, assignments, k, dim):
     return torch.cat(centroids, 0)
 
 
-@task(returns=object)
+@task(returns=torch.LongTensor)
 def kmeans_torch(expanded_vectors, centroids):
     expanded_centroids = torch.unsqueeze(centroids, 1)
     distances = torch.cumsum((expanded_vectors - expanded_centroids)**2, 2)[:, :, 1]
@@ -46,7 +46,7 @@ def kmeans_torch(expanded_vectors, centroids):
     return assignments
 
 
-@task(returns=object)
+@task(returns=torch.DoubleTensor)
 def genFragments(size, dim):
     vectors_set = []
     for i in range(size):
@@ -58,6 +58,11 @@ def genFragments(size, dim):
     return torch.from_numpy(np.array(vectors_set))
 
 
+@task(returns=torch.DoubleTensor)
+def unsqueeze(x):
+    return torch.unsqueeze(x, 0)
+
+
 def kmeans_frag(numP, k, dim, convergenceFactor, maxIterations, numFrag):
     from pycompss.api.api import compss_wait_on
     import time
@@ -66,11 +71,9 @@ def kmeans_frag(numP, k, dim, convergenceFactor, maxIterations, numFrag):
 
     size = int(numP/numFrag)
     X = [genFragments(size, dim) for _ in range(numFrag)]
-    X_e = [torch.unsqueeze(X[i], 0) for i in range(numFrag)]
-    print("Points generation Time "+str(time.time() - startTime)+" (s)")
+    X_e = [unsqueeze(X[i]) for i in range(numFrag)]
 
     centroids = genFragments(k, dim)
-    startTime = time.time()
     for n in range(maxIterations):
         assignments = [kmeans_torch(X_e[i], centroids) for i in range(numFrag)]
         centroids_partial = [assign(X[i], assignments[i], k, dim) for i in range(numFrag)]

@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 
-@task(returns=object)
+@task(returns=numpy.ndarray)
 def sum_centroids(a, b):
     return a+b
 
@@ -22,7 +22,7 @@ def mergeReduce(function, data):
             return data[x]
 
 
-@task(returns=object)
+@task(returns=numpy.ndarray)
 def assign(vectors, assignments, k, dim):
     assignments_ = torch.from_numpy(assignments)
     vectors_ = torch.from_numpy(vectors)
@@ -40,7 +40,7 @@ def assign(vectors, assignments, k, dim):
     return torch.cat(centroids, 0).numpy()
 
 
-@task(returns=object)
+@task(returns=numpy.ndarray)
 def kmeans_torch(vectors, centroids):
     expanded_vectors = torch.unsqueeze(torch.from_numpy(vectors), 0)
     expanded_centroids = torch.unsqueeze(torch.from_numpy(centroids), 1)
@@ -49,7 +49,7 @@ def kmeans_torch(vectors, centroids):
     return assignments.numpy()
 
 
-@task(returns=object)
+@task(returns=numpy.ndarray)
 def genFragments(size, dim):
     vectors_set = []
     for i in range(size):
@@ -69,10 +69,8 @@ def kmeans_frag(numP, k, dim, convergenceFactor, maxIterations, numFrag):
 
     size = int(numP/numFrag)
     X = [genFragments(size, dim) for _ in range(numFrag)]
-    print("Points generation Time "+str(time.time() - startTime)+" (s)")
 
     centroids = genFragments(k, dim)
-    startTime = time.time()
     for n in range(maxIterations):
         assignments = [kmeans_torch(X[i], centroids) for i in range(numFrag)]
         centroids_partial = [assign(X[i], assignments[i], k, dim) for i in range(numFrag)]
